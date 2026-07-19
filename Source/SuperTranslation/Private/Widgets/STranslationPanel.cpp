@@ -7,6 +7,7 @@
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "GenericPlatform/GenericPlatformHttp.h"
 //#include "Settings/SuperTranslationSettings.h"
+#include "SuperTranslationStyle.h"
 #include "Interfaces/IHttpResponse.h"
 #include "Widgets/Images/SThrobber.h"
 #include "Widgets/Input/SMultiLineEditableTextBox.h"
@@ -233,12 +234,15 @@ void STranslationPanel::Construct(const FArguments& InArgs)
 			.HAlign(HAlign_Center)
 			.VAlign(VAlign_Center)
 			[
+				//switch 切换源语言和目标语言按钮
 				SNew(SButton)
 				.ButtonStyle(&FAppStyle::Get().GetWidgetStyle<FButtonStyle>("SimpleButton"))
+				.OnClicked(this, &STranslationPanel::OnSwitchLanguageButtonClicked)
 				[
+					
 					SNew(SImage)
 					.ColorAndOpacity(FSlateColor::UseForeground())
-					.Image(FAppStyle::Get().GetBrush("Icons.arrow-leftright"))
+					.Image(FSuperTranslationStyle::Get().GetBrush("SuperTranslation.SwitchLanguage"))
 				]
 			]
 
@@ -250,7 +254,7 @@ void STranslationPanel::Construct(const FArguments& InArgs)
 		]
 
 		+SVerticalBox::Slot()
-		.MinHeight(500.f)
+		.MinHeight(200.f)
 		[
 			SNew(SHorizontalBox)
 
@@ -285,7 +289,7 @@ TSharedRef<SWidget> STranslationPanel::BuildFirstToolbar()
 		{
 			FMenuBuilder Menu(true, nullptr);
 			MakeFirstMenuEntries(Menu);
-
+			
 			return Menu.MakeWidget();
 		}),
 		TAttribute<FText>::Create(
@@ -326,11 +330,12 @@ TSharedRef<SWidget> STranslationPanel::BuildSecondToolbar()
 
 void STranslationPanel::MakeFirstMenuEntries(FMenuBuilder& MenuBuilder)
 {
+	UE_LOG(LogTemp, Warning, TEXT("MakeFirstMenuEntries"));
 	MenuBuilder.AddMenuEntry(
 	LOCTEXT("CheckLanguage", "检测语言"),
 	FText::GetEmpty(), FSlateIcon(FAppStyle::GetAppStyleSetName(), "Icons.badge"),
 	FUIAction(FExecuteAction::CreateRaw(
-		this, &STranslationPanel::OnCheckFirstLanguageClicked, FString("DetectLanguage"))));
+		this, &STranslationPanel::OnCheckFirstLanguageClicked, FString("auto"))));
 	
 	MenuBuilder.AddMenuEntry(
 		LOCTEXT("Chinese", "中文(简体)"),
@@ -346,6 +351,8 @@ void STranslationPanel::MakeFirstMenuEntries(FMenuBuilder& MenuBuilder)
 	FSlateIcon(FAppStyle::GetAppStyleSetName(), "Icons.badge"),
 	FUIAction(FExecuteAction::CreateRaw(
 			this, &STranslationPanel::OnCheckFirstLanguageClicked, FString("en"))));
+	
+	
 }
 
 void STranslationPanel::MakeSecondMenuEntries(FMenuBuilder& MenuBuilder)
@@ -381,6 +388,11 @@ void STranslationPanel::OnCheckFirstLanguageClicked(const FString TargetLanguage
 {
 	UE_LOG(LogTemp, Warning, TEXT("OnCheckFirstLanguageClicked"));
 	FText* Label = LanguageToLanguageMap.Find(TargetLanguage);
+	if (!Label)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("空指针 %s"), *TargetLanguage);
+		return;
+	}
 	FirstMenuLabel = *Label;
 	FirstMenuLanguage =  FText::FromString(TargetLanguage);
 }
@@ -391,6 +403,42 @@ void STranslationPanel::OnCheckSecondLanguageClicked(const FString TargetLanguag
 	FText* Label = LanguageToLanguageMap.Find(TargetLanguage);
 	SecondMenuLabel = *Label;
 	SecondMenuLanguage =  FText::FromString(TargetLanguage);
+}
+
+FReply STranslationPanel::OnSwitchLanguageButtonClicked()
+{
+	
+	
+	UE_LOG(LogTemp, Warning, TEXT("ConstructButtonForRowWidget"));
+	FText* Label = LanguageToLanguageMap.Find(SecondMenuLanguage.ToString());
+	if (!Label)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("OnSwitchLanguageButtonClicked 无效的Key"));
+		return FReply::Handled(); 
+	}
+	
+	FText MiddleLabel =  FirstMenuLabel;
+	FText MiddleMenuLanguage =  FirstMenuLanguage;
+	
+	if (FirstMenuLanguage.ToString() == "auto")
+	{
+		MiddleLabel =  FText::FromString(TEXT("简体中文"));
+		MiddleMenuLanguage =  FText::FromString("zh");
+		if (SecondMenuLanguage.ToString() == "zh")
+		{
+			// 时间有点晚了, 开始瞎几把写了， 后面改的合理点吧
+			SecondMenuLabel = FText::FromString(TEXT("英语"));
+			SecondMenuLanguage =  FText::FromString("en");
+		}
+	}
+	
+	FirstMenuLabel = SecondMenuLabel;
+	FirstMenuLanguage =  SecondMenuLanguage;
+
+	SecondMenuLabel = MiddleLabel;
+	SecondMenuLanguage =  MiddleMenuLanguage;
+
+	return FReply::Handled();
 }
 
 TSharedRef<SMultiLineEditableTextBox> STranslationPanel::ConstructFirstMultiLineEditableTextBox()

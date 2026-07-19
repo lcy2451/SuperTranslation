@@ -4,6 +4,8 @@
 
 #include "Modules/ModuleManager.h"
 
+class FSpawnTabArgs;
+class SDockTab;
 class FToolBarBuilder;
 class FMenuBuilder;
 

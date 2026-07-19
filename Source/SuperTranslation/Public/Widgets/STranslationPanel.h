@@ -45,6 +45,7 @@ public:
 	
 	void OnCheckFirstLanguageClicked(const FString TargetLanguage);
 	void OnCheckSecondLanguageClicked(const FString TargetLanguage);
+	FReply OnSwitchLanguageButtonClicked();
 	
 	TSharedRef<SMultiLineEditableTextBox> ConstructFirstMultiLineEditableTextBox();
 	TSharedPtr<SMultiLineEditableTextBox> ConstructedFirstMultiLineEditableTextBox;

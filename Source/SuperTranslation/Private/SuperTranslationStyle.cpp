@@ -44,6 +44,7 @@ TSharedRef< FSlateStyleSet > FSuperTranslationStyle::Create()
 	Style->SetContentRoot(IPluginManager::Get().FindPlugin("SuperTranslation")->GetBaseDir() / TEXT("Resources"));
 
 	Style->Set("SuperTranslation.PluginAction", new IMAGE_BRUSH_SVG(TEXT("PlaceholderButtonIcon"), Icon20x20));
+	Style->Set("SuperTranslation.SwitchLanguage", new IMAGE_BRUSH_SVG(TEXT("SwitchLanguage"), Icon20x20));
 	return Style;
 }
 

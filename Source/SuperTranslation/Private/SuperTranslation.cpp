@@ -5,7 +5,9 @@
 #include "SuperTranslationCommands.h"
 #include "Misc/MessageDialog.h"
 #include "ToolMenus.h"
+#include "Framework/Docking/TabManager.h"
 #include "Widgets/STranslationPanel.h"
+#include "Widgets/Docking/SDockTab.h"
 
 static const FName SuperTranslationTabName("SuperTranslation");
 
@@ -92,7 +94,7 @@ void FSuperTranslationModule::RegisterTranslationWidget()
 	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(
 FName("SuperTranslationWidget"),
 	FOnSpawnTab::CreateRaw(this, &FSuperTranslationModule::OnSpawnTranslationWidgetTab))
-	.SetDisplayName(FText::FromString(TEXT("翻译")));
+	.SetDisplayName(FText::FromString(TEXT("Query & Translate")));
 }
 
 TSharedRef<SDockTab> FSuperTranslationModule::OnSpawnTranslationWidgetTab(const FSpawnTabArgs& SpawnTabArgs)
