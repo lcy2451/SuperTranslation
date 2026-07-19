@@ -15,13 +15,20 @@ public:
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
 	
-	/** This function will be bound to Command. */
-	void PluginButtonClicked();
+
 	
 private:
 
 	void RegisterMenus();
 
+#pragma region TranslationWidget
+	/** This function will be bound to Command. */
+	void PluginButtonClicked();
+	
+	void RegisterTranslationWidget();
+	TSharedRef<SDockTab> OnSpawnTranslationWidgetTab(const FSpawnTabArgs& SpawnTabArgs);
+	
+#pragma endregion
 
 private:
 	TSharedPtr<class FUICommandList> PluginCommands;

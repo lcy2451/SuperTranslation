@@ -5,6 +5,7 @@
 #include "SuperTranslationCommands.h"
 #include "Misc/MessageDialog.h"
 #include "ToolMenus.h"
+#include "Widgets/STranslationPanel.h"
 
 static const FName SuperTranslationTabName("SuperTranslation");
 
@@ -26,6 +27,8 @@ void FSuperTranslationModule::StartupModule()
 		FExecuteAction::CreateRaw(this, &FSuperTranslationModule::PluginButtonClicked),
 		FCanExecuteAction());
 
+	RegisterTranslationWidget();
+	
 	UToolMenus::RegisterStartupCallback(FSimpleMulticastDelegate::FDelegate::CreateRaw(this, &FSuperTranslationModule::RegisterMenus));
 }
 
@@ -41,17 +44,6 @@ void FSuperTranslationModule::ShutdownModule()
 	FSuperTranslationStyle::Shutdown();
 
 	FSuperTranslationCommands::Unregister();
-}
-
-void FSuperTranslationModule::PluginButtonClicked()
-{
-	// Put your "OnButtonClicked" stuff here
-	FText DialogText = FText::Format(
-							LOCTEXT("PluginButtonDialogText", "Add code to {0} in {1} to override this button's actions"),
-							FText::FromString(TEXT("FSuperTranslationModule::PluginButtonClicked()")),
-							FText::FromString(TEXT("SuperTranslation.cpp"))
-					   );
-	FMessageDialog::Open(EAppMsgType::Ok, DialogText);
 }
 
 void FSuperTranslationModule::RegisterMenus()
@@ -78,6 +70,41 @@ void FSuperTranslationModule::RegisterMenus()
 		}
 	}
 }
+
+#pragma region TranslationWidget
+
+void FSuperTranslationModule::PluginButtonClicked()
+{
+	// Put your "OnButtonClicked" stuff here
+	// FText DialogText = FText::Format(
+	// 						LOCTEXT("PluginButtonDialogText", "Add code to {0} in {1} to override this button's actions"),
+	// 						FText::FromString(TEXT("FSuperTranslationModule::PluginButtonClicked()")),
+	// 						FText::FromString(TEXT("SuperTranslation.cpp"))
+	// );
+	// FMessageDialog::Open(EAppMsgType::Ok, DialogText);
+	
+	FGlobalTabmanager::Get()->TryInvokeTab(FName("SuperTranslationWidget"));
+}
+
+
+void FSuperTranslationModule::RegisterTranslationWidget()
+{
+	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(
+FName("SuperTranslationWidget"),
+	FOnSpawnTab::CreateRaw(this, &FSuperTranslationModule::OnSpawnTranslationWidgetTab))
+	.SetDisplayName(FText::FromString(TEXT("翻译")));
+}
+
+TSharedRef<SDockTab> FSuperTranslationModule::OnSpawnTranslationWidgetTab(const FSpawnTabArgs& SpawnTabArgs)
+{
+	return SNew(SDockTab)
+	[
+		SNew(STranslationPanel)
+	];
+}
+
+
+#pragma endregion
 
 #undef LOCTEXT_NAMESPACE
 	

@@ -34,15 +34,18 @@ public class SuperTranslation : ModuleRules
 		PrivateDependencyModuleNames.AddRange(
 			new string[]
 			{
-				"Projects",
-				"InputCore",
-				"EditorFramework",
-				"UnrealEd",
-				"ToolMenus",
-				"CoreUObject",
-				"Engine",
-				"Slate",
-				"SlateCore",
+                "Projects",
+                "InputCore",
+                "EditorFramework",
+                "UnrealEd",
+                "ToolMenus",
+                "CoreUObject",
+                "Engine",
+                "Slate",
+                "SlateCore",
+                "HTTP",
+                "Json",
+                "DeveloperSettings"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);
