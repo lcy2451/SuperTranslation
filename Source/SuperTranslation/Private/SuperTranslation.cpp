@@ -8,6 +8,11 @@
 #include "Framework/Docking/TabManager.h"
 #include "Widgets/STranslationPanel.h"
 #include "Widgets/Docking/SDockTab.h"
+#include "IPythonScriptPlugin.h"
+#include "HAL/FileManager.h"
+#include "Interfaces/IPluginManager.h"
+#include "Misc/FileHelper.h"
+
 
 static const FName SuperTranslationTabName("SuperTranslation");
 
@@ -36,6 +41,19 @@ void FSuperTranslationModule::StartupModule()
 
 	RegisterTranslationWidget();
 	
+	// 在Saved生成插件用的文件夹， 一个实例用一个
+	RegisterSavedFiles();
+	
+	RegisterDeepSeekJson();
+	
+	// RegistPythonScripts();
+	if (IPythonScriptPlugin::Get())
+	{
+		IPythonScriptPlugin::Get()
+		->OnPythonInitialized()
+		.AddRaw(this, &FSuperTranslationModule::RegisterPythonScripts);
+	}
+	
 	UToolMenus::RegisterStartupCallback(FSimpleMulticastDelegate::FDelegate::CreateRaw(this, &FSuperTranslationModule::RegisterMenus));
 }
 
@@ -51,6 +69,8 @@ void FSuperTranslationModule::ShutdownModule()
 	FSuperTranslationStyle::Shutdown();
 
 	FSuperTranslationCommands::Unregister();
+	
+	UnregisterSavedFiles();
 }
 
 void FSuperTranslationModule::RegisterMenus()
@@ -83,6 +103,55 @@ void FSuperTranslationModule::RegisterMenus()
 	}
 }
 
+void FSuperTranslationModule::RegisterPythonScripts()
+{
+	const FString 
+	PythonLib = FPaths::ConvertRelativePathToFull(IPluginManager::Get().FindPlugin(
+		TEXT("SuperTranslation"))->GetBaseDir() / "Resources" / "DefaultPythonSource" / "Lib");
+	const FString PythonPath = FPaths::ConvertRelativePathToFull(IPluginManager::Get().FindPlugin(
+	TEXT("SuperTranslation"))->GetBaseDir() / "Resources" / "DefaultPythonSource" / "Python");
+	
+	const FString PythonCommand = FString::Printf(
+	TEXT("import sys; sys.path.insert(0, r'%s');sys.path.insert(0, r'%s')"),
+	*PythonLib,
+	*PythonPath
+	);
+	
+	FString Cmd = FString::Printf(
+	TEXT("import os; os.environ['SUPER_TRANSLATION_TEMP']=r'%s'"),
+	*TempDir
+	);
+
+	IPythonScriptPlugin::Get()->ExecPythonCommand(*Cmd);
+	
+	if (!IPythonScriptPlugin::Get())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Python No NO NO NO"));
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Python Yes Yes Yes"));
+	}
+	IPythonScriptPlugin::Get()->ExecPythonCommand(ToCStr(PythonCommand));
+}
+
+
+void FSuperTranslationModule::RegisterSavedFiles()
+{
+	TempDir = FPaths::ConvertRelativePathToFull(
+		FPaths::ProjectSavedDir() / TEXT("SuperTranslation") / FGuid::NewGuid().ToString());
+	
+	IFileManager::Get().MakeDirectory(*TempDir, true);
+}
+
+void FSuperTranslationModule::UnregisterSavedFiles()
+{
+	if (IFileManager::Get().DirectoryExists(*TempDir))
+	{
+		IFileManager::Get().DeleteDirectory(*TempDir);
+	}
+}
+
 #pragma region TranslationWidget
 
 void FSuperTranslationModule::PluginButtonClicked()
@@ -100,7 +169,9 @@ void FSuperTranslationModule::PluginButtonClicked()
 
 void FSuperTranslationModule::PluginTestButtonClicked()
 {
-	UE_LOG(LogTemp, Warning, TEXT("PluginTestButtonClicked"));
+	// UE_LOG(LogTemp, Warning, TEXT("PluginTestButtonClicked"));
+	IPythonScriptPlugin::Get()->ExecPythonCommand(
+	TEXT("import deepseek_provider;deepseek_provider.DeepSeekProvider.test()"));
 }
 
 
@@ -118,6 +189,15 @@ TSharedRef<SDockTab> FSuperTranslationModule::OnSpawnTranslationWidgetTab(const 
 	[
 		SNew(STranslationPanel)
 	];
+}
+
+void FSuperTranslationModule::RegisterDeepSeekJson()
+{
+	const FString JsonPath = TempDir / "DeepSeek.json";
+	FFileHelper::SaveStringToFile(
+	TEXT("{}"),
+	*JsonPath
+	);
 }
 
 

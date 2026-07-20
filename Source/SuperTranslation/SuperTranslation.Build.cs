@@ -45,8 +45,8 @@ public class SuperTranslation : ModuleRules
                 "SlateCore",
                 "HTTP",
                 "Json",
-                "DeveloperSettings"
-				// ... add private dependencies that you statically link with here ...	
+                "DeveloperSettings", "PythonScriptPlugin"
+                // ... add private dependencies that you statically link with here ...	
 			}
 			);
 		

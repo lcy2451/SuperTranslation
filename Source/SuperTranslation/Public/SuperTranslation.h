@@ -17,11 +17,18 @@ public:
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
 	
-
-	
 private:
 
 	void RegisterMenus();
+	void RegisterPythonScripts();
+	
+	//在Saved生成插件用的文件夹， 一个实例用一个
+	void RegisterSavedFiles();
+	
+	//清理Saved里插件用的文件夹
+	void UnregisterSavedFiles();
+	
+	FString TempDir;
 
 #pragma region TranslationWidget
 	/** This function will be bound to Command. */
@@ -30,6 +37,9 @@ private:
 	
 	void RegisterTranslationWidget();
 	TSharedRef<SDockTab> OnSpawnTranslationWidgetTab(const FSpawnTabArgs& SpawnTabArgs);
+	
+	// 生成 DeepSeek 暂存文件
+	void RegisterDeepSeekJson();
 	
 #pragma endregion
 
