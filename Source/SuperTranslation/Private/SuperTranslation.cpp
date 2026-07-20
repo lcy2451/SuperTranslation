@@ -28,6 +28,11 @@ void FSuperTranslationModule::StartupModule()
 		FSuperTranslationCommands::Get().PluginAction,
 		FExecuteAction::CreateRaw(this, &FSuperTranslationModule::PluginButtonClicked),
 		FCanExecuteAction());
+	
+	PluginCommands->MapAction(
+	FSuperTranslationCommands::Get().TestAction,
+	FExecuteAction::CreateRaw(this, &FSuperTranslationModule::PluginTestButtonClicked),
+	FCanExecuteAction());
 
 	RegisterTranslationWidget();
 	
@@ -66,8 +71,13 @@ void FSuperTranslationModule::RegisterMenus()
 		{
 			FToolMenuSection& Section = ToolbarMenu->FindOrAddSection("PluginTools");
 			{
-				FToolMenuEntry& Entry = Section.AddEntry(FToolMenuEntry::InitToolBarButton(FSuperTranslationCommands::Get().PluginAction));
+				FToolMenuEntry& Entry = Section.AddEntry(
+					FToolMenuEntry::InitToolBarButton(FSuperTranslationCommands::Get().PluginAction));
 				Entry.SetCommandList(PluginCommands);
+				
+				FToolMenuEntry& EntryTest = Section.AddEntry(
+					FToolMenuEntry::InitToolBarButton(FSuperTranslationCommands::Get().TestAction));
+				EntryTest.SetCommandList(PluginCommands);
 			}
 		}
 	}
@@ -86,6 +96,11 @@ void FSuperTranslationModule::PluginButtonClicked()
 	// FMessageDialog::Open(EAppMsgType::Ok, DialogText);
 	
 	FGlobalTabmanager::Get()->TryInvokeTab(FName("SuperTranslationWidget"));
+}
+
+void FSuperTranslationModule::PluginTestButtonClicked()
+{
+	UE_LOG(LogTemp, Warning, TEXT("PluginTestButtonClicked"));
 }
 
 

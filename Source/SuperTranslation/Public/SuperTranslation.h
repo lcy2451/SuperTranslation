@@ -26,6 +26,7 @@ private:
 #pragma region TranslationWidget
 	/** This function will be bound to Command. */
 	void PluginButtonClicked();
+	void PluginTestButtonClicked();
 	
 	void RegisterTranslationWidget();
 	TSharedRef<SDockTab> OnSpawnTranslationWidgetTab(const FSpawnTabArgs& SpawnTabArgs);
