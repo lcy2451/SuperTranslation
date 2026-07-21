@@ -7,8 +7,10 @@
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "GenericPlatform/GenericPlatformHttp.h"
 //#include "Settings/SuperTranslationSettings.h"
+#include "IPythonScriptPlugin.h"
 #include "SuperTranslationStyle.h"
 #include "Interfaces/IHttpResponse.h"
+#include "Misc/FileHelper.h"
 #include "Widgets/Images/SThrobber.h"
 #include "Widgets/Input/SMultiLineEditableTextBox.h"
 #include "Serialization/JsonSerializer.h"
@@ -63,6 +65,90 @@ void STranslationPanel::BingTranslator(const FString& TextToTranslate, const FSt
 
 	AuthRequest->OnProcessRequestComplete().BindRaw(this, &STranslationPanel::OnProcessBingRequestComplete);
 	AuthRequest->ProcessRequest();
+}
+
+void STranslationPanel::DeepSeekTranslator(const FString& TextToTranslate, const FString& TargetLang,
+	const FString& SourceLang)
+{
+	RegisterDeepSeekJson();
+	SaveDeepSeekApiToFile();
+	DisplayedAlternatives.Empty();
+	
+	Alternatives.Empty();
+	
+	FString Text = TextToTranslate;
+	
+	// 1. 处理回车与换行
+	Text.ReplaceInline(TEXT("\r"), TEXT(""));
+	Text.ReplaceInline(TEXT("\n"), TEXT("\\n"));
+
+	// 2. 处理单引号，防止 Python 字符串提前截断 (Don't -> Don\'t)
+	Text.ReplaceInline(TEXT("'"), TEXT("\\'"));
+
+	// 3. 拼接 Python 命令
+	FString PythonCommand = FString::Printf(
+		TEXT("import deepseek_provider;deepseek_provider.DeepSeekProvider.translate_and_save('%s', '%s', '%s')"),
+		*Text,
+		*TargetLang,
+		*SourceLang);
+	
+	IPythonScriptPlugin::Get()->ExecPythonCommand(*PythonCommand);
+	
+	FString JsonString;
+	if (!FFileHelper::LoadFileToString(JsonString, *JsonPath))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Json No NO NO NO %s"), *JsonPath);
+		return;
+	}
+	
+	TSharedPtr<FJsonObject> JsonObject;
+	
+	TSharedRef<TJsonReader<>> Reader =
+		TJsonReaderFactory<>::Create(JsonString);	
+	
+	if (!FJsonSerializer::Deserialize(Reader, JsonObject) || !JsonObject.IsValid())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Json Parse Failed Failed Failed Failed"));
+		return;
+	}
+	
+	TMap<FString, FString> JsonMap;
+	FString DeepSeekTranslations;
+	for (const auto& Pair : JsonObject->Values)
+	{
+		FString KeyStr = FString(Pair.Key);
+		
+		if (Pair.Value.IsValid() && FString(Pair.Key) == "alternatives" && Pair.Value->Type == EJson::Array)
+		{
+			const TArray<TSharedPtr<FJsonValue>>& ArrayVal = Pair.Value->AsArray();
+			for (const auto &Elem: ArrayVal)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("咕咕嘎嘎 饿啊 : %s "), *Elem.Get()->AsString());
+				Alternatives.Add(Elem.Get()->AsString());
+				TSharedPtr<FString> Alternative = MakeShared<FString>(Elem.Get()->AsString());
+				DisplayedAlternatives.Add(Alternative);
+			}
+			
+		}
+		
+		if (Pair.Value.IsValid() && FString(Pair.Key) == "translation")
+		{
+			DeepSeekTranslations = Pair.Value->AsString();
+		}
+	}
+	
+	ConstructedSecondMultiLineEditableTextBox->SetText(FText::FromString(DeepSeekTranslations));
+	LastResult = DeepSeekTranslations;
+	
+	if (ConstructedSThrobber.IsValid())
+	{
+		ConstructedSThrobber->SetVisibility(EVisibility::Hidden);
+	}
+	
+	if (ConstructedAlternativesListView.IsValid())
+	{
+		ConstructedAlternativesListView->RebuildList();
+	}
 }
 
 void STranslationPanel::OnProcessRequestComplete(FHttpRequestPtr Req, FHttpResponsePtr Res, bool bSuccess)
@@ -136,7 +222,9 @@ void STranslationPanel::OnProcessBingRequestComplete(FHttpRequestPtr Request, FH
 	if (EdgeTargetLang == TEXT("zh") || EdgeTargetLang == TEXT("zh-CN")) EdgeTargetLang = TEXT("zh-Hans");
 	
 	// API URL
-	FString TranslateUrl = FString::Printf(TEXT("https://api-edge.cognitive.microsofttranslator.com/translate?from=&to=%s&api-version=3.0&includeSentenceLength=true"), *EdgeTargetLang);
+	FString TranslateUrl = FString::Printf(
+		TEXT(
+			"https://api-edge.cognitive.microsofttranslator.com/translate?from=&to=%s&api-version=3.0&includeSentenceLength=true"), *EdgeTargetLang);
 		
 	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> TransRequest = FHttpModule::Get().CreateRequest();
 	TransRequest->SetURL(TranslateUrl);
@@ -212,10 +300,76 @@ void STranslationPanel::OnProcessBingTransRequestComplete(FHttpRequestPtr TransR
 	}
 }
 
+TSharedRef<SListView<TSharedPtr<FString>>> STranslationPanel::ConstructAlternativesListView()
+{
+	ConstructedAlternativesListView = SNew(SListView<TSharedPtr<FString>>)
+							.ListItemsSource(&DisplayedAlternatives)
+							.OnGenerateRow(this, &STranslationPanel::OnGenerateAlternativesRowForList);
+	
+	return ConstructedAlternativesListView.ToSharedRef();
+}
+
+TSharedRef<ITableRow> STranslationPanel::OnGenerateAlternativesRowForList(TSharedPtr<FString> AlternativesToDisplay,
+	const TSharedRef<STableViewBase>& OwnerTable)
+{
+	if (!AlternativesToDisplay.IsValid()) return SNew(STableRow <TSharedPtr<FString> >, OwnerTable);
+	
+	const FString* Alternative = AlternativesToDisplay.Get();
+	TSharedRef<STableRow <TSharedPtr<FString> >> AlternativesListView = 
+		SNew(STableRow <TSharedPtr<FString> >, OwnerTable)
+		[
+			SNew(SHorizontalBox)
+
+			+SHorizontalBox::Slot()
+			.HAlign(HAlign_Left)
+			.VAlign(VAlign_Fill)
+			[
+			SNew(STextBlock)
+			.Text(FText::FromString(*Alternative))]
+			];
+	
+	return AlternativesListView;
+	
+}
+
+void STranslationPanel::SaveDeepSeekApiToFile()
+{
+	const USuperTranslationSettings* Settings = GetDefault<USuperTranslationSettings>();
+	FSuperTranslationModule& SuperManagerModule = 
+	FModuleManager::LoadModuleChecked<FSuperTranslationModule>(TEXT("SuperTranslation"));
+	
+	if (Settings->DeepSeekApiKey.IsEmpty()) return;
+	// 1. 文件名直接换成 txt（或者去掉后缀）
+	auto ApikeyPath = SuperManagerModule.TempDir / "DeepSeekApiKey.txt";
+	// 2. 直接将 ApiKey 字符串写入文件
+	FFileHelper::SaveStringToFile(
+		Settings->DeepSeekApiKey,
+		*ApikeyPath,
+		FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM
+	);
+}
+
+void STranslationPanel::RegisterDeepSeekJson()
+{
+	FSuperTranslationModule& SuperManagerModule = 
+	FModuleManager::LoadModuleChecked<FSuperTranslationModule>(TEXT("SuperTranslation"));
+	
+	JsonPath = SuperManagerModule.TempDir / "DeepSeek.json";
+	FFileHelper::SaveStringToFile(
+	TEXT("{}"),
+	*JsonPath
+	);
+}
+
 #define LOCTEXT_NAMESPACE "FSTranslationPanel"
 
 void STranslationPanel::Construct(const FArguments& InArgs)
 {
+	// DisplayedAlternatives = {
+	// 	MakeShared<FString>(FString("dd")),
+	// 	MakeShared<FString>(FString("dsad"))
+	// };
+	
 	ChildSlot
 	[
 		SNew(SVerticalBox)
@@ -265,7 +419,17 @@ void STranslationPanel::Construct(const FArguments& InArgs)
 					
 			+SHorizontalBox::Slot()
 			[
-				ConstructSecondMultiLineEditableTextBox()
+				SNew(SVerticalBox)
+
+				+SVerticalBox::Slot()
+				[
+					ConstructSecondMultiLineEditableTextBox()
+				]
+
+				+SVerticalBox::Slot()
+				[
+					ConstructAlternativesListView()
+				]
 			]
 		]
 
@@ -407,8 +571,6 @@ void STranslationPanel::OnCheckSecondLanguageClicked(const FString TargetLanguag
 
 FReply STranslationPanel::OnSwitchLanguageButtonClicked()
 {
-	
-	
 	UE_LOG(LogTemp, Warning, TEXT("ConstructButtonForRowWidget"));
 	FText* Label = LanguageToLanguageMap.Find(SecondMenuLanguage.ToString());
 	if (!Label)
@@ -500,6 +662,7 @@ void STranslationPanel::OnTextCommitted(const FText& NewText, ETextCommit::Type 
 		break;
 	case ETranslationEngine::DeepSeekApi:
 		UE_LOG(LogTemp, Warning, TEXT("On DeepSeekApi"));
+		DeepSeekTranslator(TextToTranslate, TargetLang, SourceLang);
 		break;
 	}
 	

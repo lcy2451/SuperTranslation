@@ -43,4 +43,9 @@ public:
 		meta = (DisplayName = "翻译引擎",
 			Tooltip = "翻译引擎"))
 	ETranslationEngine TranslationEngine;
+	
+	/** Google API 密钥 */
+	UPROPERTY(Config, EditAnywhere,
+		meta = (EditCondition = "TranslationEngine == ETranslationEngine::DeepSeekApi"))
+	FString DeepSeekApiKey = TEXT("");
 };

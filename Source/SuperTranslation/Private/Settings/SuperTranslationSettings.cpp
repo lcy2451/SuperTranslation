@@ -4,6 +4,7 @@
 #include "Settings/SuperTranslationSettings.h"
 
 USuperTranslationSettings::USuperTranslationSettings()
-: TranslationEngine(ETranslationEngine::GoogleFree)  //默认google翻译
+: TranslationEngine(ETranslationEngine::GoogleFree)//默认google翻译
+, DeepSeekApiKey(TEXT(""))
 {
 }

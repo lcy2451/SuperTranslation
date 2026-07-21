@@ -17,6 +17,8 @@ public:
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
 	
+	FString TempDir;
+	
 private:
 
 	void RegisterMenus();
@@ -27,8 +29,6 @@ private:
 	
 	//清理Saved里插件用的文件夹
 	void UnregisterSavedFiles();
-	
-	FString TempDir;
 
 #pragma region TranslationWidget
 	/** This function will be bound to Command. */
@@ -40,6 +40,8 @@ private:
 	
 	// 生成 DeepSeek 暂存文件
 	void RegisterDeepSeekJson();
+	FString JsonPath;
+	TArray<FString> Alternatives;
 	
 #pragma endregion
 

@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Interfaces/IHttpRequest.h"
 #include "Widgets/SCompoundWidget.h"
+#include "Widgets/Views/SListView.h"
 
 /**
  * 
@@ -68,6 +69,9 @@ public:
 	void BingTranslator(
 	const FString& TextToTranslate, const FString& TargetLang, const FString& SourceLang);
 	
+	void DeepSeekTranslator(
+	const FString& TextToTranslate, const FString& TargetLang, const FString& SourceLang);
+	
 	void OnProcessRequestComplete(FHttpRequestPtr Req, FHttpResponsePtr Res, bool bSuccess);
 	void OnProcessBingRequestComplete(
 		FHttpRequestPtr Request, FHttpResponsePtr Response, bool bSuccess);
@@ -76,4 +80,18 @@ public:
 	
 	FString LastInput;
 	FString LastResult;
+	
+	TSharedRef<SListView<TSharedPtr<FString>>> ConstructAlternativesListView();
+	TSharedPtr<SListView<TSharedPtr<FString>>> ConstructedAlternativesListView;
+	TArray<TSharedPtr<FString>> DisplayedAlternatives;
+	
+	TSharedRef<ITableRow> OnGenerateAlternativesRowForList(TSharedPtr<FString> AlternativesToDisplay,
+														const TSharedRef<STableViewBase>& OwnerTable);
+	
+	void SaveDeepSeekApiToFile();
+	
+	// 生成 DeepSeek 暂存文件
+	void RegisterDeepSeekJson();
+	FString JsonPath;
+	TArray<FString> Alternatives;
 };

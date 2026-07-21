@@ -12,6 +12,8 @@
 #include "HAL/FileManager.h"
 #include "Interfaces/IPluginManager.h"
 #include "Misc/FileHelper.h"
+#include "Serialization/JsonReader.h"
+#include "Serialization/JsonSerializer.h"
 
 
 static const FName SuperTranslationTabName("SuperTranslation");
@@ -169,9 +171,54 @@ void FSuperTranslationModule::PluginButtonClicked()
 
 void FSuperTranslationModule::PluginTestButtonClicked()
 {
+	Alternatives.Empty();
+	
 	// UE_LOG(LogTemp, Warning, TEXT("PluginTestButtonClicked"));
 	IPythonScriptPlugin::Get()->ExecPythonCommand(
 	TEXT("import deepseek_provider;deepseek_provider.DeepSeekProvider.test()"));
+	
+	FString JsonString;
+	if (!FFileHelper::LoadFileToString(JsonString, *JsonPath))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Json No NO NO NO %s"), *JsonPath);
+		return;
+	}
+	
+	TSharedPtr<FJsonObject> JsonObject;
+	
+	TSharedRef<TJsonReader<>> Reader =
+		TJsonReaderFactory<>::Create(JsonString);	
+	
+	if (!FJsonSerializer::Deserialize(Reader, JsonObject) || !JsonObject.IsValid())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Json Parse Failed Failed Failed Failed"));
+		return;
+	}
+	
+	TMap<FString, FString> JsonMap;
+	FString DeepSeekTranslations;
+	for (const auto& Pair : JsonObject->Values)
+	{
+		FString KeyStr = FString(Pair.Key);
+		
+		if (Pair.Value.IsValid() && FString(Pair.Key) == "alternatives" && Pair.Value->Type == EJson::Array)
+		{
+			const TArray<TSharedPtr<FJsonValue>>& ArrayVal = Pair.Value->AsArray();
+			for (const auto &Elem: ArrayVal)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("咕咕嘎嘎 饿啊 : %s "), *Elem.Get()->AsString());
+				Alternatives.Add(Elem.Get()->AsString());
+			}
+			
+		}
+		
+		if (Pair.Value.IsValid() && FString(Pair.Key) == "translation")
+		{
+			DeepSeekTranslations = Pair.Value->AsString();
+			UE_LOG(LogTemp, Warning, TEXT("咕咕嘎嘎 饱了 : %s "), *DeepSeekTranslations);
+		}
+	}
+	
 }
 
 
@@ -193,13 +240,12 @@ TSharedRef<SDockTab> FSuperTranslationModule::OnSpawnTranslationWidgetTab(const 
 
 void FSuperTranslationModule::RegisterDeepSeekJson()
 {
-	const FString JsonPath = TempDir / "DeepSeek.json";
+	JsonPath = TempDir / "DeepSeek.json";
 	FFileHelper::SaveStringToFile(
 	TEXT("{}"),
 	*JsonPath
 	);
 }
-
 
 #pragma endregion
 
