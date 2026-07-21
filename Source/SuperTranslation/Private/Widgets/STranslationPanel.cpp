@@ -323,10 +323,15 @@ TSharedRef<ITableRow> STranslationPanel::OnGenerateAlternativesRowForList(TShare
 			+SHorizontalBox::Slot()
 			.HAlign(HAlign_Left)
 			.VAlign(VAlign_Fill)
+			.AutoWidth()
 			[
-			SNew(STextBlock)
-			.Text(FText::FromString(*Alternative))]
-			];
+			SNew(SMultiLineEditableText)
+			.Text(FText::FromString(*Alternative))
+			.IsReadOnly(true)                   // 1. 设置为只读，防止用户修改内容
+			.SelectAllTextWhenFocused(false)     // 2. 聚焦时不强制全选（方便自由拖选）
+			.ClearKeyboardFocusOnCommit(false)
+			]
+		];
 	
 	return AlternativesListView;
 	

@@ -232,7 +232,7 @@ FName("SuperTranslationWidget"),
 
 TSharedRef<SDockTab> FSuperTranslationModule::OnSpawnTranslationWidgetTab(const FSpawnTabArgs& SpawnTabArgs)
 {
-	return SNew(SDockTab)
+	return SNew(SDockTab).TabRole(ETabRole::NomadTab)
 	[
 		SNew(STranslationPanel)
 	];
