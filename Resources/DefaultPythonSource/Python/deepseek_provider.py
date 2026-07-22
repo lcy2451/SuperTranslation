@@ -122,3 +122,19 @@ class DeepSeekProvider:
     @staticmethod
     def rename_actor():
         pass
+
+
+# if __name__ == '__main__':
+# 
+#     import http.client
+# 
+#     conn = http.client.HTTPSConnection("api.deepseek.com")
+#     payload = ''
+#     headers = {
+#         'Accept': 'application/json',
+#         'Authorization': 'Bearer sk-5bf6f0e127d84ba8b20579fd025a0e38'
+#     }
+#     conn.request("GET", "/user/balance", payload, headers)
+#     res = conn.getresponse()
+#     data = res.read()
+#     print(data.decode("utf-8"))

@@ -9,6 +9,8 @@ class SDockTab;
 class FToolBarBuilder;
 class FMenuBuilder;
 
+
+
 class FSuperTranslationModule : public IModuleInterface
 {
 public:
@@ -41,7 +43,7 @@ private:
 	// 生成 DeepSeek 暂存文件
 	void RegisterDeepSeekJson();
 	FString JsonPath;
-	TArray<FString> Alternatives;
+	// TArray<FString> Alternatives;
 	
 #pragma endregion
 

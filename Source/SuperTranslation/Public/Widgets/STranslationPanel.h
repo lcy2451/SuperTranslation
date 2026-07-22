@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Interfaces/IHttpRequest.h"
+#include "Providers/DeepSeekProvider.h"
 #include "Widgets/SCompoundWidget.h"
 #include "Widgets/Views/SListView.h"
 
@@ -69,6 +70,9 @@ public:
 	void BingTranslator(
 	const FString& TextToTranslate, const FString& TargetLang, const FString& SourceLang);
 	
+	void DeepSeekTranslatorPython(
+	const FString& TextToTranslate, const FString& TargetLang, const FString& SourceLang);
+	
 	void DeepSeekTranslator(
 	const FString& TextToTranslate, const FString& TargetLang, const FString& SourceLang);
 	
@@ -94,4 +98,9 @@ public:
 	void RegisterDeepSeekJson();
 	FString JsonPath;
 	TArray<FString> Alternatives;
+	
+	FReply OnButtonTestReply();
+	FReply OnButtonTranslator();
+	void Translator(const FString &TextToTranslate, const FString& TargetLang, const FString& SourceLang);
+	DeepSeekProvider DSProvider;
 };

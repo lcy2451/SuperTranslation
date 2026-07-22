@@ -8,15 +8,18 @@
 #include "GenericPlatform/GenericPlatformHttp.h"
 //#include "Settings/SuperTranslationSettings.h"
 #include "IPythonScriptPlugin.h"
+#include "RenderGraphResources.h"
 #include "SuperTranslationStyle.h"
 #include "Interfaces/IHttpResponse.h"
 #include "Misc/FileHelper.h"
+#include "Providers/DeepSeekProvider.h"
 #include "Widgets/Images/SThrobber.h"
 #include "Widgets/Input/SMultiLineEditableTextBox.h"
 #include "Serialization/JsonSerializer.h"
 #include "Settings/SuperTranslationSettings.h"
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Input/SButton.h"
+
 
 #define MaximumLength 200
 static const FName TestPluginATabName("TestPluginA");
@@ -67,7 +70,7 @@ void STranslationPanel::BingTranslator(const FString& TextToTranslate, const FSt
 	AuthRequest->ProcessRequest();
 }
 
-void STranslationPanel::DeepSeekTranslator(const FString& TextToTranslate, const FString& TargetLang,
+void STranslationPanel::DeepSeekTranslatorPython(const FString& TextToTranslate, const FString& TargetLang,
 	const FString& SourceLang)
 {
 	RegisterDeepSeekJson();
@@ -149,6 +152,15 @@ void STranslationPanel::DeepSeekTranslator(const FString& TextToTranslate, const
 	{
 		ConstructedAlternativesListView->RebuildList();
 	}
+}
+
+void STranslationPanel::DeepSeekTranslator(const FString& TextToTranslate, const FString& TargetLang,
+	const FString& SourceLang)
+{
+	UE_LOG(
+		LogTemp, Warning, TEXT("DeepSeekTranslator 翻译结果为: %s , %s:%s"), *TextToTranslate, *TargetLang, *SourceLang);
+	
+	DSProvider.Translator(TextToTranslate, TargetLang, SourceLang);
 }
 
 void STranslationPanel::OnProcessRequestComplete(FHttpRequestPtr Req, FHttpResponsePtr Res, bool bSuccess)
@@ -366,6 +378,65 @@ void STranslationPanel::RegisterDeepSeekJson()
 	);
 }
 
+FReply STranslationPanel::OnButtonTestReply()
+{
+	UE_LOG(LogTemp, Warning, TEXT("OnButtonTestReply"));
+	DSProvider.Translator("aaa");
+	return FReply::Handled();
+}
+
+FReply STranslationPanel::OnButtonTranslator()
+{
+	// 待翻译的文本与目标语言
+	FString TextToTranslate = ConstructedFirstMultiLineEditableTextBox.Get()->GetText().ToString();
+	FString TargetLang = SecondMenuLanguage.ToString();
+	FString SourceLang = FirstMenuLanguage.ToString();
+	
+	Translator(TextToTranslate, TargetLang, SourceLang);
+	return FReply::Handled();
+}
+
+void STranslationPanel::Translator(const FString& TextToTranslate, const FString& TargetLang, const FString& SourceLang)
+{
+	if (TextToTranslate.IsEmpty() || LastInput == TextToTranslate)
+	{
+		if (ConstructedSThrobber.IsValid())
+		{
+			ConstructedSThrobber->SetVisibility(EVisibility::Hidden);
+		}
+		return;
+	};
+	
+	if (ConstructedSThrobber.IsValid())
+	{
+		ConstructedSThrobber->SetVisibility(EVisibility::Visible);
+	}
+	UE_LOG(LogTemp, Warning, TEXT("OnTextCommitted %s"), *TextToTranslate);
+	
+	Alternatives.Empty();
+	DisplayedAlternatives.Empty();
+	
+	LastInput = TextToTranslate;
+	
+	const USuperTranslationSettings* Settings = GetDefault<USuperTranslationSettings>();
+	
+	switch (Settings->TranslationEngine)
+	{
+	case ETranslationEngine::GoogleFree:
+		UE_LOG(LogTemp, Warning, TEXT("On GoogleFree"));
+		GoogleTranslator(TextToTranslate, TargetLang, SourceLang);
+		break;
+	case ETranslationEngine::MicrosoftFree:
+		UE_LOG(LogTemp, Warning, TEXT("On MicrosoftFree"));
+		BingTranslator(TextToTranslate, TargetLang, SourceLang);
+		break;
+	case ETranslationEngine::DeepSeekApi:
+		UE_LOG(LogTemp, Warning, TEXT("On DeepSeekApi"));
+		DeepSeekTranslator(TextToTranslate, TargetLang, SourceLang);
+		break;
+	}
+}
+
 #define LOCTEXT_NAMESPACE "FSTranslationPanel"
 
 void STranslationPanel::Construct(const FArguments& InArgs)
@@ -374,6 +445,10 @@ void STranslationPanel::Construct(const FArguments& InArgs)
 	// 	MakeShared<FString>(FString("dd")),
 	// 	MakeShared<FString>(FString("dsad"))
 	// };
+	TWeakPtr<STranslationPanel> WeakThis =
+		SharedThis(this);
+	DSProvider = DeepSeekProvider();
+	DSProvider.SetTranslationPanel(WeakThis);
 	
 	ChildSlot
 	[
@@ -396,6 +471,7 @@ void STranslationPanel::Construct(const FArguments& InArgs)
 				//switch 切换源语言和目标语言按钮
 				SNew(SButton)
 				.ButtonStyle(&FAppStyle::Get().GetWidgetStyle<FButtonStyle>("SimpleButton"))
+				.ButtonColorAndOpacity(FLinearColor(1.f, 1.f, 1.f, 0.f))
 				.OnClicked(this, &STranslationPanel::OnSwitchLanguageButtonClicked)
 				[
 					
@@ -441,8 +517,29 @@ void STranslationPanel::Construct(const FArguments& InArgs)
 		+SVerticalBox::Slot()
 		.AutoHeight()
 		[
-			ConstructSThrobber()
+			SNew(SHorizontalBox)
+
+			+SHorizontalBox::Slot()
+			.AutoWidth()
+			[
+				SNew(SButton)
+				.OnClicked(this, &STranslationPanel::OnButtonTranslator)
+				.Text(FText::FromString(TEXT("翻译")))
+			]
+			
+			+SHorizontalBox::Slot()
+			[
+				ConstructSThrobber()
+			]
 		]
+
+		// +SVerticalBox::Slot()
+		// .AutoHeight()
+		// [
+		// 	SNew(SButton)
+		// 	.OnClicked(this, &STranslationPanel::OnButtonTestReply)
+		// 	.Text(FText::FromString(TEXT("点击")))
+		// ]
 		
 	];
 }
@@ -450,7 +547,7 @@ void STranslationPanel::Construct(const FArguments& InArgs)
 TSharedRef<SWidget> STranslationPanel::BuildFirstToolbar()
 {
 	FSlimHorizontalToolBarBuilder Toolbar(nullptr, FMultiBoxCustomization::None);
-
+	
 	FUIAction ComboAction;
 	Toolbar.AddComboButton(ComboAction, 
 	FOnGetContent::CreateLambda(
@@ -628,49 +725,11 @@ TSharedRef<SMultiLineEditableTextBox> STranslationPanel::ConstructSecondMultiLin
 
 void STranslationPanel::OnTextCommitted(const FText& NewText, ETextCommit::Type CommitType)
 {
-	if (ConstructedSThrobber.IsValid())
-	{
-		ConstructedSThrobber->SetVisibility(EVisibility::Visible);
-	}
-	UE_LOG(LogTemp, Warning, TEXT("OnTextCommitted %s"), *NewText.ToString());
-	
 	// 待翻译的文本与目标语言
 	FString TextToTranslate = NewText.ToString();
 	FString TargetLang = SecondMenuLanguage.ToString();
 	FString SourceLang = FirstMenuLanguage.ToString();
-	
-	if (TextToTranslate.IsEmpty() || LastInput == TextToTranslate)
-	{
-		if (ConstructedSThrobber.IsValid())
-		{
-			ConstructedSThrobber->SetVisibility(EVisibility::Hidden);
-		}
-		return;
-	};
-	
-	LastInput = NewText.ToString();
-	
-	FSuperTranslationModule& SuperManagerModule = 
-	FModuleManager::LoadModuleChecked<FSuperTranslationModule>(TEXT("SuperTranslation"));
-	
-	const USuperTranslationSettings* Settings = GetDefault<USuperTranslationSettings>();
-	
-	switch (Settings->TranslationEngine)
-	{
-	case ETranslationEngine::GoogleFree:
-		UE_LOG(LogTemp, Warning, TEXT("On GoogleFree"));
-		GoogleTranslator(TextToTranslate, TargetLang, SourceLang);
-		break;
-	case ETranslationEngine::MicrosoftFree:
-		UE_LOG(LogTemp, Warning, TEXT("On MicrosoftFree"));
-		BingTranslator(TextToTranslate, TargetLang, SourceLang);
-		break;
-	case ETranslationEngine::DeepSeekApi:
-		UE_LOG(LogTemp, Warning, TEXT("On DeepSeekApi"));
-		DeepSeekTranslator(TextToTranslate, TargetLang, SourceLang);
-		break;
-	}
-	
+	Translator(TextToTranslate, TargetLang, SourceLang);
 }
 
 void STranslationPanel::OnTextChanged(const FText& NewText)
