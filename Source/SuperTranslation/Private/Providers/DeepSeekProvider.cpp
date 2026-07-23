@@ -168,6 +168,14 @@ void DeepSeekProvider::Translator(FString Text, FString TargetLang, FString Sour
 		FString::Printf(TEXT("Bearer %s"), *Settings->DeepSeekApiKey)
 	);
 	
+	
+	//这个模式如果开启会比较费钱
+	//"thinking": {
+	//"type": "enabled"
+	//},
+	
+	// "reasoning_effort": "high",从这里删掉了，  怀疑是烧钱的参数
+	// "max_tokens": 4096, 也调低了
 	FString JsonBody =  FString::Printf(TEXT(R"(
 		{
 		  "messages": [
@@ -182,10 +190,10 @@ void DeepSeekProvider::Translator(FString Text, FString TargetLang, FString Sour
 		  ],
 		  "model": "deepseek-v4-flash",
 		  "thinking": {
-		    "type": "enabled"
+		    "type": "disabled"
 		  },
-		  "reasoning_effort": "high",
-		  "max_tokens": 4096,
+
+		  "max_tokens": 512,
 		  "response_format": {
 		    "type": "json_object"
 		  },
@@ -255,7 +263,7 @@ void DeepSeekProvider::OnProcessRequestComplete(FHttpRequestPtr Req, FHttpRespon
 				TMap<FJsonObject::FStringType, TSharedPtr<FJsonValue>> Currency = ChoiceObject->Values;
 				for (const TPair<FJsonObject::FStringType, TSharedPtr<FJsonValue>>& Pair : Currency)  
 				{  
-					TSharedPtr<FJsonObject>* Object;
+					const  TSharedPtr<FJsonObject>* Object;
 					FString OutString;
 					if (Pair.Value->TryGetObject(Object))
 					{

@@ -2,6 +2,8 @@
 
 #include "SuperTranslation.h"
 
+#include "ContentBrowserModule.h"
+#include "EditorUtilityLibrary.h"
 #include "HttpModule.h"
 #include "SuperTranslationStyle.h"
 #include "SuperTranslationCommands.h"
@@ -18,6 +20,8 @@
 #include "Serialization/JsonReader.h"
 #include "Serialization/JsonSerializer.h"
 #include "Settings/SuperTranslationSettings.h"
+#include "AssetRegistry/AssetData.h"
+#include "Widgets/SAssetRenamePanel.h"
 
 
 static const FName SuperTranslationTabName("SuperTranslation");
@@ -61,6 +65,9 @@ void FSuperTranslationModule::StartupModule()
 	}
 	
 	UToolMenus::RegisterStartupCallback(FSimpleMulticastDelegate::FDelegate::CreateRaw(this, &FSuperTranslationModule::RegisterMenus));
+	
+	// 右键菜单的三次注册
+	InitCBMenuExtension();
 }
 
 void FSuperTranslationModule::ShutdownModule()
@@ -158,6 +165,132 @@ void FSuperTranslationModule::UnregisterSavedFiles()
 	}
 }
 
+#pragma region ContextMenu
+
+void FSuperTranslationModule::InitCBMenuExtension()
+{
+	// 加载 ContentBrowser 模块，并获取该模块的引用
+	FContentBrowserModule& ContentBrowserModule = 
+	FModuleManager::LoadModuleChecked<FContentBrowserModule>(TEXT("ContentBrowser"));
+	
+	// 获取“内容浏览器路径区域右键菜单”的所有扩展委托
+	TArray<FContentBrowserMenuExtender_SelectedPaths>& ContextBrowserModuleMenuExtenders = 
+	ContentBrowserModule.GetAllPathViewContextMenuExtenders();
+	
+	// CreateRaw可以同时完成创建和绑定， 第一次绑定
+	ContextBrowserModuleMenuExtenders.Add(
+		FContentBrowserMenuExtender_SelectedPaths::CreateRaw(
+			this, &FSuperTranslationModule::CustomCBMenuExtender));
+	
+	// 获取 Content Browser 中“选中资源后的右键菜单扩展器列表”
+	TArray<FContentBrowserMenuExtender_SelectedAssets>& AssetMenuExtenders = 
+		ContentBrowserModule.GetAllAssetViewContextMenuExtenders();
+	AssetMenuExtenders.Add(
+		FContentBrowserMenuExtender_SelectedAssets::CreateRaw(
+	this, &FSuperTranslationModule::CustomSelectedAssetsCBMenuExtender));
+	
+	// 获取并注册 Content Browser 空白区域（当前路径）的右键菜单扩展。
+	TArray<FContentBrowserMenuExtender_SelectedPaths>& MenuExtenders =
+	ContentBrowserModule.GetAllAssetContextMenuExtenders();
+	MenuExtenders.Add(
+	FContentBrowserMenuExtender_SelectedPaths::CreateRaw(
+		this,
+		&FSuperTranslationModule::CustomEmptyAreaMenuExtender
+	));
+}
+
+TSharedRef<FExtender> FSuperTranslationModule::CustomCBMenuExtender(const TArray<FString>& SelectedPaths)
+{
+	TSharedRef<FExtender> MenuExtender (new FExtender());
+	
+	if (SelectedPaths.Num()>0)
+	{
+		MenuExtender->AddMenuExtension(FName("Delete"), 
+			// EExtensionHook::After表示在Delete按钮之后添加
+			EExtensionHook::After,
+			//TSharedPtr<FUICommandList>()是一个空的， 这里可以写菜单的热键， 如果不想写， 可以留空
+			TSharedPtr<FUICommandList>(),
+			// 二次绑定
+			FMenuExtensionDelegate::CreateRaw(this, &FSuperTranslationModule::AddCBMenuEntry));
+	}
+	return MenuExtender;
+}
+
+TSharedRef<FExtender> FSuperTranslationModule::CustomEmptyAreaMenuExtender(const TArray<FString>& SelectedPaths)
+{
+	TSharedRef<FExtender> MenuExtender (new FExtender());
+	
+	MenuExtender->AddMenuExtension(FName("Rename"), 
+		// EExtensionHook::After表示在按钮之后添加
+		EExtensionHook::After,
+		//TSharedPtr<FUICommandList>()是一个空的， 这里可以写菜单的热键， 如果不想写， 可以留空
+		TSharedPtr<FUICommandList>(),
+		// 二次绑定
+		FMenuExtensionDelegate::CreateRaw(this, &FSuperTranslationModule::AddAssetsCBMenuEntry));
+	
+	return MenuExtender;
+}
+
+TSharedRef<FExtender> FSuperTranslationModule::CustomSelectedAssetsCBMenuExtender(const TArray<FAssetData>& SelectedAssets)
+{
+	TSharedRef<FExtender> MenuExtender (new FExtender());
+	
+	if (SelectedAssets.Num()>0)
+	{
+		MenuExtender->AddMenuExtension(FName("Rename"), 
+			// EExtensionHook::After表示在按钮之后添加
+			EExtensionHook::Before,
+			//TSharedPtr<FUICommandList>()是一个空的， 这里可以写菜单的热键， 如果不想写， 可以留空
+			TSharedPtr<FUICommandList>(),
+			// 二次绑定
+			FMenuExtensionDelegate::CreateRaw(this, &FSuperTranslationModule::AddSelectedAssetsCBMenuEntry));
+	}
+
+	return MenuExtender;
+}
+
+void FSuperTranslationModule::AddCBMenuEntry(FMenuBuilder& MenuBuilder)
+{
+	MenuBuilder.AddMenuEntry(
+	FText::FromString(TEXT("Delete Unused Asset 显示的标题文本")),
+	FText::FromString(TEXT("Safely Delete all unused assets under folder 鼠标悬停时的提示")),
+	// 这里可以设置Icon
+	FSlateIcon(),
+	FExecuteAction::CreateLambda([]()
+	{
+		UE_LOG(LogTemp, Warning, TEXT("点击了 Delete Unused Asset"));
+		
+		// 在这里写点击菜单后要执行的代码
+	}));
+}
+
+void FSuperTranslationModule::AddSelectedAssetsCBMenuEntry(FMenuBuilder& MenuBuilder)
+{
+	MenuBuilder.AddMenuEntry(
+	FText::FromString(TEXT("Rename Asset")),
+	FText::FromString(TEXT("Rename Asset")),
+	// 这里可以设置Icon
+	FSlateIcon(),
+	FExecuteAction::CreateRaw(this, &FSuperTranslationModule::ShowRenameWidget));
+}
+
+void FSuperTranslationModule::AddAssetsCBMenuEntry(FMenuBuilder& MenuBuilder)
+{
+	MenuBuilder.AddMenuEntry(
+	FText::FromString(TEXT("Rename Asset")),
+	FText::FromString(TEXT("Rename Asset")),
+	// 这里可以设置Icon
+	FSlateIcon(),
+	FExecuteAction::CreateLambda([]()
+	{
+		UE_LOG(LogTemp, Warning, TEXT("点击了 测试菜单"));
+				
+		// 在这里写点击菜单后要执行的代码
+	}));
+}
+
+#pragma endregion
+
 #pragma region TranslationWidget
 
 void FSuperTranslationModule::PluginButtonClicked()
@@ -223,9 +356,9 @@ void FSuperTranslationModule::PluginTestButtonClicked()
 	// 	}
 	// }
 	
-	const USuperTranslationSettings* Settings = GetDefault<USuperTranslationSettings>();
-	FSuperTranslationModule& SuperManagerModule = 
-	FModuleManager::LoadModuleChecked<FSuperTranslationModule>(TEXT("SuperTranslation"));
+	// const USuperTranslationSettings* Settings = GetDefault<USuperTranslationSettings>();
+	// FSuperTranslationModule& SuperManagerModule = 
+	// FModuleManager::LoadModuleChecked<FSuperTranslationModule>(TEXT("SuperTranslation"));
 	
 	// if (Settings->DeepSeekApiKey.IsEmpty()) return;
 	//
@@ -366,7 +499,6 @@ void FSuperTranslationModule::PluginTestButtonClicked()
 	// 	TEXT("Request started: %s"),
 	// 	bStarted ? TEXT("true") : TEXT("false")
 	// );
-	
 }
 
 
@@ -399,6 +531,49 @@ void FSuperTranslationModule::RegisterDeepSeekJson()
 	TEXT("{}"),
 	*JsonPath
 	);
+}
+
+
+
+#pragma endregion
+
+#pragma region RenameWidget
+
+void FSuperTranslationModule::ShowRenameWidget()
+{
+	TSharedRef<SWindow> RenameWindow =
+	SNew(SWindow)
+	.Title(FText::FromString(TEXT("AI Asset Renamer")))
+	.ClientSize(FVector2D(700.0f, 500.0f))
+	[
+		SNew(SAssetRenamePanel).AssetDataToStore(GetAllAssetDataUnderSelectedAsset())
+	];
+	FSlateApplication::Get().AddModalWindow(
+	RenameWindow,
+	nullptr,
+	false
+	);
+	
+	
+	// FSlateApplication::Get().AddWindow(RenameWindow);
+	
+// 	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(
+// FName("SuperTranslationWidget"),
+// 	FOnSpawnTab::CreateRaw(this, &FSuperTranslationModule::OnSpawnTranslationWidgetTab))
+// 	.SetDisplayName(FText::FromString(TEXT("Query & Translate")));
+}
+
+TArray<TSharedPtr<FAssetData>> FSuperTranslationModule::GetAllAssetDataUnderSelectedAsset()
+{
+	TArray<TSharedPtr<FAssetData>> AvailableAssetData;
+	TArray<FAssetData>  SelectedAssetData = UEditorUtilityLibrary::GetSelectedAssetData();
+	for (const FAssetData& AssetData:SelectedAssetData)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("sss  %s"), *AssetData.AssetName.ToString());
+		AvailableAssetData.Add(MakeShared<FAssetData>(AssetData));
+	}
+	
+	return AvailableAssetData;
 }
 
 #pragma endregion

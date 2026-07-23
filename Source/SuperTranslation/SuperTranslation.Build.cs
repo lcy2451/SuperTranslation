@@ -25,7 +25,7 @@ public class SuperTranslation : ModuleRules
 		PublicDependencyModuleNames.AddRange(
 			new string[]
 			{
-				"Core", "HTTP",
+				"Core", "HTTP", "Slate",
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);
@@ -45,7 +45,7 @@ public class SuperTranslation : ModuleRules
                 "SlateCore",
                 "HTTP",
                 "Json",
-                "DeveloperSettings", "PythonScriptPlugin"
+                "DeveloperSettings", "PythonScriptPlugin", "Blutility"
                 // ... add private dependencies that you statically link with here ...	
 			}
 			);
