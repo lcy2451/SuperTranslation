@@ -45,7 +45,8 @@ public class SuperTranslation : ModuleRules
                 "SlateCore",
                 "HTTP",
                 "Json",
-                "DeveloperSettings", "PythonScriptPlugin", "Blutility"
+                "DeveloperSettings", "PythonScriptPlugin", "Blutility",
+                "PhysicsCore"
                 // ... add private dependencies that you statically link with here ...	
 			}
 			);

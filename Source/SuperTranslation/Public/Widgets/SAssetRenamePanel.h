@@ -9,6 +9,8 @@
 #include "Widgets/Views/SListView.h"
 #include "Materials/Material.h"
 #include "Materials/MaterialInstanceConstant.h"
+#include "PhysicalMaterials/PhysicalMaterial.h"
+#include "PhysicsEngine/PhysicsAsset.h"
 
 struct FAssetRenameItem
 {
@@ -42,6 +44,9 @@ public:
 	TMap<UClass*, FString> PrefixMap = {
 		{UBlueprint::StaticClass(), TEXT("BP_")},
 		{UMaterial::StaticClass(), TEXT("M_")},
-		{UMaterialInstanceConstant::StaticClass(), TEXT("MI_")}
+		{UMaterialInstanceConstant::StaticClass(), TEXT("MI_")},
+		{UPhysicsAsset::StaticClass(), TEXT("PHYS_")},
+		{UPhysicalMaterial::StaticClass(), TEXT("PM_")},
 	};
 };
+

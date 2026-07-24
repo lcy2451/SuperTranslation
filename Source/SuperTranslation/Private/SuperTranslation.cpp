@@ -499,6 +499,13 @@ void FSuperTranslationModule::PluginTestButtonClicked()
 	// 	TEXT("Request started: %s"),
 	// 	bStarted ? TEXT("true") : TEXT("false")
 	// );
+	
+	auto SelectedAsset = GetAllAssetDataUnderSelectedAsset();
+	for (auto Asset : SelectedAsset)
+	{
+		auto MyGlass = Asset.Get()->GetClass();
+		UE_LOG(LogTemp, Warning, TEXT("%s"), *MyGlass->GetName())
+	}
 }
 
 
