@@ -1,0 +1,2 @@
+# Ignore bundled Python third-party libraries
+Resources/DefaultPythonSource/Lib/** linguist-vendored
