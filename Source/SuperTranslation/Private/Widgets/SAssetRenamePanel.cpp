@@ -6,6 +6,7 @@
 #include "EditorUtilityLibrary.h"
 #include "AssetRegistry/AssetData.h"
 #include "Components/VerticalBox.h"
+#include "Misc/MessageDialog.h"
 #include "Utils/SuperTranslationAssetUtils.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Text/SInlineEditableTextBlock.h"
@@ -67,6 +68,7 @@ TSharedRef<ITableRow> SAssetRenamePanel::OnGenerateRowForList(
 	
 	TSharedRef<STableRow<TSharedPtr<FAssetData>>> ListViewRowWidget = 
 	SNew(STableRow < TSharedPtr <FAssetData> >, OwnerTable)
+		
 	[
 		SNew(SHorizontalBox)
 
@@ -78,23 +80,30 @@ TSharedRef<ITableRow> SAssetRenamePanel::OnGenerateRowForList(
 
 		+SHorizontalBox::Slot()
 		[
-			SNew(SInlineEditableTextBlock)
-				// .Text(FText::FromString( AssetDataToDisplay.Get()->NewName ))
-			.Text_Lambda([AssetDataToDisplay]()
+			SNew(SBorder)
+			.BorderImage(FAppStyle::GetBrush("WhiteBrush"))
+			.BorderBackgroundColor_Lambda([AssetDataToDisplay]()
 			{
-				return FText::FromString(AssetDataToDisplay->NewName);
+				return AssetDataToDisplay.IsValid() &&
+					AssetDataToDisplay->IsConflicting
+						? FLinearColor(0.5f, 0.05f, 0.05f, 0.35f)
+						: FLinearColor::Transparent;
 			})
-			.OnTextCommitted_Lambda(
-				[AssetDataToDisplay](
-					const FText& NewText,
-					ETextCommit::Type CommitType)
+			[
+				SNew(SInlineEditableTextBlock)
+				// .Text(FText::FromString( AssetDataToDisplay.Get()->NewName ))
+				.Text_Lambda([AssetDataToDisplay]()
 				{
-					if (CommitType == ETextCommit::OnEnter ||
-						CommitType == ETextCommit::OnUserMovedFocus)
-					{
-						AssetDataToDisplay->NewName = NewText.ToString();
-					}
+					return FText::FromString(AssetDataToDisplay->NewName);
 				})
+				.OnTextCommitted(
+					FOnTextCommitted::CreateSP(
+						this,
+						&SAssetRenamePanel::OnAssetNameCommitted,
+						AssetDataToDisplay
+					)
+				)
+			]
 		]
 		
 	];
@@ -126,6 +135,8 @@ TSharedRef<SListView<TSharedPtr<FAssetRenameItem>>> SAssetRenamePanel::Construct
 FReply SAssetRenamePanel::OnRenameButtonClicked()
 {
 	UE_LOG(LogTemp, Warning, TEXT("RenameButtonClicked"));
+	
+	ConflictingAssets.Empty();
 	
 	for (const TSharedPtr<FAssetRenameItem>& AssetRenameItem: AssetDataAsStruct)
 	{
@@ -162,9 +173,34 @@ FReply SAssetRenamePanel::OnRenameButtonClicked()
 		else
 		{
 			AssetRenameItem.Get()->NewName = *PrefixFound + AssetData->AssetName.ToString();
+			
+			FString OutSelectedPackagePath = AssetData->PackagePath.ToString();
+		
+			if (SuperTranslationAssetUtils::CheckIsNameUsed(OutSelectedPackagePath, AssetRenameItem.Get()->NewName))
+			{
+				ConflictingAssets.AddUnique(AssetData);
+				AssetRenameItem.Get()->IsConflicting = true;
+			}
+			else
+			{
+				AssetRenameItem.Get()->IsConflicting = false;
+			}
 		}
+		
 	}
 	ConstructedAssetListView->RebuildList();
+	
+	if (!ConflictingAssets.IsEmpty())
+	{
+		FMessageDialog::Open(  
+		EAppMsgType::Ok,  
+		FText::FromString(
+			TEXT("Some calculated asset names already exist.\n")
+			TEXT("部分计算出的资产名称已经存在，请修改后重试。")
+		),
+		FText::FromString(TEXT("Asset Name Conflict")));
+	}
+	
 	return FReply::Handled();
 }
 
@@ -172,12 +208,29 @@ FReply SAssetRenamePanel::OnApplyRenameButtonClicked()
 {
 	UE_LOG(LogTemp, Warning, TEXT("OnApplyRenameButtonClicked"));
 	
+	if (!ConflictingAssets.IsEmpty())
+	{
+		FMessageDialog::Open(  
+		EAppMsgType::Ok,  
+		FText::FromString(
+			TEXT("Some calculated asset names already exist.\n")
+			TEXT("部分计算出的资产名称已经存在，请修改后重试。")
+		),
+		FText::FromString(TEXT("Asset Name Conflict")));
+		
+		return FReply::Handled();
+	}
+	
 	SuperTranslationAssetUtils::FixUpRedirectors();
 	
 	for (const TSharedPtr<FAssetRenameItem>& AssetRenameItem: AssetDataAsStruct)
 	{
 		const TSharedPtr<FAssetData> AssetData = AssetRenameItem.Get()->AssetData;
 		FString NewName = AssetRenameItem.Get()->NewName;
+		if (NewName == AssetRenameItem->AssetData->AssetName.ToString())
+		{
+			continue;
+		}
 		UEditorUtilityLibrary::RenameAsset(AssetData.Get()->GetAsset(), NewName);
 		
 		AssetRenameItem.Get()->NewName = "";
@@ -195,4 +248,39 @@ FReply SAssetRenamePanel::OnApplyRenameButtonClicked()
 	ConstructedAssetListView->RebuildList();
 	
 	return FReply::Handled();
+}
+
+void SAssetRenamePanel::RefreshAssetListViewState()
+{
+	ConflictingAssets.Empty();
+	
+	for (const TSharedPtr<FAssetRenameItem>& AssetRenameItem: AssetDataAsStruct)
+	{
+		const TSharedPtr<FAssetData> AssetData = AssetRenameItem.Get()->AssetData;
+		
+		FString OutSelectedPackagePath = AssetData->PackagePath.ToString();
+		
+		if (SuperTranslationAssetUtils::CheckIsNameUsed(OutSelectedPackagePath, AssetRenameItem.Get()->AssetData))
+		{
+			ConflictingAssets.AddUnique(AssetData);
+			AssetRenameItem.Get()->IsConflicting = true;
+		}
+		else
+		{
+			AssetRenameItem.Get()->IsConflicting = false;
+		}
+		
+	}
+}
+
+void SAssetRenamePanel::OnAssetNameCommitted(const FText& NewText, ETextCommit::Type CommitType,
+	TSharedPtr<FAssetRenameItem> AssetItem)
+{
+	if (CommitType == ETextCommit::OnEnter ||
+	CommitType == ETextCommit::OnUserMovedFocus)
+	{
+		AssetItem->NewName = NewText.ToString();
+		UE_LOG(LogTemp, Warning, TEXT("就哈哈哈%s"), *NewText.ToString());
+		RefreshAssetListViewState();
+	}
 }

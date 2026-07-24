@@ -7,6 +7,8 @@
 #include "AssetRegistry/AssetData.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "UObject/ObjectRedirector.h"
+#include "EditorAssetLibrary.h"
+
 
 SuperTranslationAssetUtils::SuperTranslationAssetUtils()
 {
@@ -69,4 +71,55 @@ void SuperTranslationAssetUtils::FixUpRedirectors()
 	AssetToolsModule.Get().FixupReferencers(
 		RedirectorToFixArray, false, ERedirectFixupMode::DeleteFixedUpRedirectors);
 	
+}
+
+//检查目标资产是否被使用
+bool SuperTranslationAssetUtils::CheckIsNameUsed(const FString& FolderPathToCheck, const FString& NameToCheck)
+{
+	TArray<FString> ExistingAssetsPaths = UEditorAssetLibrary::ListAssets(FolderPathToCheck, false);
+	
+	for (const FString& ExistingAssetPath: ExistingAssetsPaths)
+	{
+		const FString ExistingAssetName = FPaths::GetBaseFilename(ExistingAssetPath);
+		if (ExistingAssetName.Equals(NameToCheck))
+		{
+			// FMessageDialog::Open(
+			// EAppMsgType::Ok,
+			// FText::FromString(MaterialNameToCheck + TEXT(" 已被资产使用"))
+			// );
+			return true;
+		}
+	}
+	
+	return false;
+}
+
+bool SuperTranslationAssetUtils::CheckIsNameUsed(
+	const FString& FolderPathToCheck, const TSharedPtr<FAssetData>& AssetDataToCheck)
+{
+	const TArray<FString> ExistingAssetsPaths = UEditorAssetLibrary::ListAssets(FolderPathToCheck, false);
+	
+	for (const FString& ExistingAssetPath: ExistingAssetsPaths)
+	{
+		const FAssetData AssetData = UEditorAssetLibrary::FindAssetData(ExistingAssetPath);
+		
+		// UE_LOG(LogTemp, Warning, TEXT("骄傲u骄傲 %s:::::%s"), *ExistingAssetPath, *AssetDataToCheck->GetFullName())
+		if (AssetData.IsValid() && AssetData.GetFullName() == AssetDataToCheck->GetFullName())
+		{
+			
+			// UE_LOG(LogTemp, Warning, TEXT("咕咕嘎嘎、"));
+			continue;
+		}
+		
+		if (ExistingAssetPath.Equals(AssetDataToCheck->GetFullName()))
+		{
+			// FMessageDialog::Open(
+			// EAppMsgType::Ok,
+			// FText::FromString(MaterialNameToCheck + TEXT(" 已被资产使用"))
+			// );
+			return true;
+		}
+	}
+	
+	return false;
 }

@@ -16,6 +16,7 @@ struct FAssetRenameItem
 {
 	TSharedPtr<FAssetData> AssetData;
 	FString NewName;
+	bool IsConflicting = false;
 };
 
 /**
@@ -48,5 +49,13 @@ public:
 		{UPhysicsAsset::StaticClass(), TEXT("PHYS_")},
 		{UPhysicalMaterial::StaticClass(), TEXT("PM_")},
 	};
+	
+	TArray<TSharedPtr<FAssetData>> ConflictingAssets;
+	
+	void RefreshAssetListViewState();
+	void OnAssetNameCommitted(
+		const FText& NewText,
+		ETextCommit::Type CommitType,
+		TSharedPtr<FAssetRenameItem> AssetItem);
 };
 
