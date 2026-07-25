@@ -8,6 +8,9 @@
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "UObject/ObjectRedirector.h"
 #include "EditorAssetLibrary.h"
+#include "IPythonScriptPlugin.h"
+#include "SuperTranslation.h"
+#include "Misc/FileHelper.h"
 
 
 SuperTranslationAssetUtils::SuperTranslationAssetUtils()
@@ -122,4 +125,47 @@ bool SuperTranslationAssetUtils::CheckIsNameUsed(
 	}
 	
 	return false;
+}
+
+FString SuperTranslationAssetUtils::PreprocessPinyinInput(const FString& PinyinToCheck)
+{
+	FSuperTranslationModule& SuperManagerModule = 
+	FModuleManager::LoadModuleChecked<FSuperTranslationModule>(TEXT("SuperTranslation"));
+	
+	FString TempDir = SuperManagerModule.TempDir;
+	
+	UE_LOG(LogTemp, Warning, TEXT("  我不会  %s"), *PinyinToCheck);
+	// 拼接 Python 命令
+	FString PythonCommand = FString::Printf(
+		TEXT("import pinyin_utils;pinyin_utils.pinyin_check_save('%s')"),
+		*PinyinToCheck);
+	
+	//执行python命令
+	IPythonScriptPlugin::Get()->ExecPythonCommand(*PythonCommand);
+	
+	
+	const FString HasPinyinStringPath = TempDir / "has_pinyin";
+	
+	UE_LOG(LogTemp, Warning, TEXT("  你就会  %s"), *HasPinyinStringPath);
+	// FFileHelper::
+	if (IFileManager::Get().FileExists(*HasPinyinStringPath))
+	{
+		FString HasPinyinString;
+		FFileHelper::LoadFileToString(HasPinyinString, *HasPinyinStringPath);
+
+		UE_LOG(LogTemp, Warning, TEXT("啊啊啊啊啊 %s"), *HasPinyinString);
+		IFileManager::Get().Delete(*HasPinyinStringPath);
+		
+		if (HasPinyinString == PinyinToCheck)
+		{
+			return "";
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("不等于不等于 %s"), *HasPinyinString);
+		}
+		return HasPinyinString;
+	}
+	
+	return "";
 }

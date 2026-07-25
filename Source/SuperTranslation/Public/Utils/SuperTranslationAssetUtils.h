@@ -20,4 +20,8 @@ public:
 	// 检查目标资产是否被使用
 	static bool CheckIsNameUsed(const FString& FolderPathToCheck, const FString& NameToCheck);
 	static bool CheckIsNameUsed(const FString& FolderPathToCheck, const TSharedPtr<FAssetData>& AssetDataToCheck);
+	
+	// 预处理 拼音
+	static FString PreprocessPinyinInput(const FString& PinyinToCheck);
+	
 };

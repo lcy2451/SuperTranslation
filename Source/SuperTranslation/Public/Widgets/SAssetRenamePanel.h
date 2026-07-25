@@ -5,12 +5,15 @@
 #include "CoreMinimal.h"
 #include "AssetRegistry/AssetData.h"
 #include "Engine/Blueprint.h"
+#include "Interfaces/IHttpRequest.h"
 #include "Widgets/SCompoundWidget.h"
 #include "Widgets/Views/SListView.h"
 #include "Materials/Material.h"
 #include "Materials/MaterialInstanceConstant.h"
 #include "PhysicalMaterials/PhysicalMaterial.h"
 #include "PhysicsEngine/PhysicsAsset.h"
+
+class SCheckBox;
 
 struct FAssetRenameItem
 {
@@ -57,5 +60,19 @@ public:
 		const FText& NewText,
 		ETextCommit::Type CommitType,
 		TSharedPtr<FAssetRenameItem> AssetItem);
+	
+	void UpdateRenameItem(
+		const TSharedPtr<FAssetRenameItem>& AssetRenameItem, FString OldName="", bool Translate=false);
+	
+public:
+	void GoogleTranslator(
+	const TSharedPtr<FAssetRenameItem>& AssetRenameItem, const FString& TextToTranslate, const FString& TargetLang, const FString& SourceLang);
+	
+	void OnProcessRequestComplete(
+		FHttpRequestPtr Req, FHttpResponsePtr Res, bool bSuccess, const TSharedPtr<FAssetRenameItem> Item);
+	
+	TSharedRef<SCheckBox> ConstructIsTranslate();
+	TSharedPtr<SCheckBox> ConstructedIsTranslate;
+	
 };
 

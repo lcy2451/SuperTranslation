@@ -50,6 +50,7 @@ void FSuperTranslationModule::StartupModule()
 	FCanExecuteAction());
 
 	RegisterTranslationWidget();
+	RegisterRenameWidget();
 	
 	// 在Saved生成插件用的文件夹， 一个实例用一个
 	RegisterSavedFiles();
@@ -270,7 +271,10 @@ void FSuperTranslationModule::AddSelectedAssetsCBMenuEntry(FMenuBuilder& MenuBui
 	FText::FromString(TEXT("Rename Asset")),
 	FText::FromString(TEXT("Rename Asset")),
 	// 这里可以设置Icon
-	FSlateIcon(),
+	FSlateIcon(
+			FSuperTranslationStyle::GetStyleSetName(),
+			TEXT("SuperTranslation.Rename")
+		),
 	FExecuteAction::CreateRaw(this, &FSuperTranslationModule::ShowRenameWidget));
 }
 
@@ -548,26 +552,58 @@ void FSuperTranslationModule::RegisterDeepSeekJson()
 
 void FSuperTranslationModule::ShowRenameWidget()
 {
-	TSharedRef<SWindow> RenameWindow =
-	SNew(SWindow)
-	.Title(FText::FromString(TEXT("AI Asset Renamer")))
-	.ClientSize(FVector2D(700.0f, 500.0f))
-	[
-		SNew(SAssetRenamePanel).AssetDataToStore(GetAllAssetDataUnderSelectedAsset())
-	];
-	FSlateApplication::Get().AddModalWindow(
-	RenameWindow,
-	nullptr,
-	false
-	);
+	// TSharedRef<SWindow> RenameWindow =
+	// SNew(SWindow)
+	// .Title(FText::FromString(TEXT("AI Asset Renamer")))
+	// .ClientSize(FVector2D(700.0f, 500.0f))
+	// [
+	// 	SNew(SAssetRenamePanel).AssetDataToStore(GetAllAssetDataUnderSelectedAsset())
+	// ];
+	// FSlateApplication::Get().AddModalWindow(
+	// RenameWindow,
+	// nullptr,
+	// false
+	// );
 	
+	// 因为 AddModalWindow 阻塞线程时，  翻译线程更新不了UI， 就放弃了
 	
 	// FSlateApplication::Get().AddWindow(RenameWindow);
 	
-// 	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(
-// FName("SuperTranslationWidget"),
-// 	FOnSpawnTab::CreateRaw(this, &FSuperTranslationModule::OnSpawnTranslationWidgetTab))
-// 	.SetDisplayName(FText::FromString(TEXT("Query & Translate")));
+	// 	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(
+	// FName("SuperTranslationWidget"),
+	// 	FOnSpawnTab::CreateRaw(this, &FSuperTranslationModule::OnSpawnTranslationWidgetTab))
+	// 	.SetDisplayName(FText::FromString(TEXT("Query & Translate")));
+	
+	// 关闭之前的窗口
+	if (TSharedPtr<SDockTab> ExistingTab =
+	FGlobalTabmanager::Get()->FindExistingLiveTab(FName("AssetRenamer")))
+	{
+		ExistingTab->RequestCloseTab();
+	}
+	
+	FGlobalTabmanager::Get()->TryInvokeTab(FName("AssetRenamer"));
+}
+
+void FSuperTranslationModule::RegisterRenameWidget()
+{
+	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(
+	FName("AssetRenamer"),
+	FOnSpawnTab::CreateRaw(this, &FSuperTranslationModule::OnSpawnRenameWidgetTab))
+	.SetDisplayName(FText::FromString(TEXT("Rename Widget")))
+	.SetIcon(
+	FSlateIcon(
+			FSuperTranslationStyle::GetStyleSetName(),
+			TEXT("SuperTranslation.Rename")
+		));
+	
+}
+
+TSharedRef<SDockTab> FSuperTranslationModule::OnSpawnRenameWidgetTab(const FSpawnTabArgs& SpawnTabArgs)
+{
+	return SNew(SDockTab).TabRole(ETabRole::NomadTab)
+	[
+		SNew(SAssetRenamePanel).AssetDataToStore(GetAllAssetDataUnderSelectedAsset())
+	];
 }
 
 TArray<TSharedPtr<FAssetData>> FSuperTranslationModule::GetAllAssetDataUnderSelectedAsset()

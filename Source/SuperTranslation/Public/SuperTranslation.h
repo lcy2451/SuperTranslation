@@ -64,6 +64,8 @@ private:
 	
 #pragma region RenameWidget
 	void ShowRenameWidget();
+	void RegisterRenameWidget();
+	TSharedRef<SDockTab> OnSpawnRenameWidgetTab(const FSpawnTabArgs& SpawnTabArgs);
 	TArray<TSharedPtr<FAssetData>> GetAllAssetDataUnderSelectedAsset();
 	
 #pragma endregion

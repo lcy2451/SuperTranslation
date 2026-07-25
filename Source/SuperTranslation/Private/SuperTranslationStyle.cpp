@@ -46,6 +46,7 @@ TSharedRef< FSlateStyleSet > FSuperTranslationStyle::Create()
 	Style->Set("SuperTranslation.PluginAction", new IMAGE_BRUSH_SVG(TEXT("PlaceholderButtonIcon"), Icon20x20));
 	Style->Set("SuperTranslation.SwitchLanguage", new IMAGE_BRUSH_SVG(TEXT("SwitchLanguage"), Icon20x20));
 	Style->Set("SuperTranslation.TestAction", new IMAGE_BRUSH_SVG(TEXT("PluginTestButton"), Icon20x20));
+	Style->Set("SuperTranslation.Rename", new IMAGE_BRUSH_SVG(TEXT("Rename"), Icon20x20));
 	return Style;
 }
 
