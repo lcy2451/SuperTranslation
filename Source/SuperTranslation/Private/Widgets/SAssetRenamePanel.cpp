@@ -227,8 +227,12 @@ FReply SAssetRenamePanel::OnApplyRenameButtonClicked()
 	{
 		const TSharedPtr<FAssetData> AssetData = AssetRenameItem.Get()->AssetData;
 		FString NewName = AssetRenameItem.Get()->NewName;
+		
+		UE_LOG(LogTemp, Warning, TEXT("old Name %s  New Name %s"), *AssetRenameItem->AssetData->AssetName.ToString(), *NewName)
 		if (NewName == AssetRenameItem->AssetData->AssetName.ToString())
 		{
+			UE_LOG(LogTemp, Warning, TEXT("跳过了 %s . 重命名"), *NewName)
+			AssetRenameItem.Get()->NewName = "";
 			continue;
 		}
 		UEditorUtilityLibrary::RenameAsset(AssetData.Get()->GetAsset(), NewName);
