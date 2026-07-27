@@ -41,11 +41,11 @@ public:
 	UPROPERTY(Config,
 		EditAnywhere,
 		meta = (DisplayName = "翻译引擎",
-			Tooltip = "翻译引擎"))
+			Tooltip = "翻译引擎"), Category = "Translation")
 	ETranslationEngine TranslationEngine;
 	
 	/** Google API 密钥 */
 	UPROPERTY(Config, EditAnywhere,
-		meta = (EditCondition = "TranslationEngine == ETranslationEngine::DeepSeekApi"))
+		meta = (EditCondition = "TranslationEngine == ETranslationEngine::DeepSeekApi"), Category = "Translation")
 	FString DeepSeekApiKey = TEXT("");
 };
